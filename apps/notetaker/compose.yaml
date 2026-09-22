@@ -8,8 +8,13 @@
 # стартует, поэтому порт публикуется напрямую — «первого открывшего» нет.
 #
 # ИИ: UNO_LLM_API_KEY — собственный ключ шлюза приложения (выдаёт App Store,
-# llm_key в каталоге, с потолком расхода). На Work-машине без него приложение
-# берёт ключ самой машины из /var/lib/uno-work/userdata (только чтение).
+# llm_key в каталоге, потолок расхода $10 по умолчанию, меняется в карточке).
+# Папку состояния Uno Work (/var/lib/uno-work/userdata — там ключ машины,
+# ключ кук, токен агента) в контейнер НЕ монтируем: с ключом приложения она
+# не нужна, а ключ машины позволил бы обойти потолок расхода.
+#
+# PUID/PGID 1002 = пользователь unowork в образе Work (≥153): встречи в
+# ~/Meetings принадлежат человеку, «Файлы» их открывают и удаляют.
 #
 # Данные — в домашней папке человека, чтобы их видели «Файлы» и ИИ машины:
 # ~/Meetings/<дата время название>/{audio/, transcript.md, notes.md};
@@ -24,12 +29,11 @@ services:
       UNO_APP_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
       UNO_LLM_API_KEY: ${UNO_LLM_API_KEY:-}
       UNO_LLM_BASE_URL: ${UNO_LLM_BASE_URL:-https://api.getuno.xyz/v1}
+      PUID: "1002"
+      PGID: "1002"
     volumes:
       - /home/unowork/Meetings:/meetings
       - /home/unowork/.uno:/uno-dot
-      # каталог, а не файл: отсутствующий файл docker создал бы папкой и
-      # сломал бы Uno Work
-      - /var/lib/uno-work/userdata:/uno-work:ro
       - state:/state
     ports: ["8430:8430"]
     mem_limit: 1500m
