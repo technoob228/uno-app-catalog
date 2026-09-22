@@ -1,0 +1,57 @@
+# Ghost — блог и сайт с рассылкой: красивые темы, редактор, страницы,
+# подписчики. MIT. MySQL внутри.
+# Владелец сайта создаётся при установке (init → API setup), порт открывается
+# только после этого — см. lib/README-gate.md. Письма (рассылка, вход с нового
+# устройства) без SMTP не уходят — проверку входа с нового устройства
+# выключаем, иначе владелец не войдёт.
+name: uno-ghost
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    # Маленький блог: без performance_schema и с малым буфером — ~150 МБ вместо ~500.
+    command: ["--performance-schema=OFF", "--innodb-buffer-pool-size=64M"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+      MYSQL_DATABASE: ghost
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    volumes: [db:/var/lib/mysql]
+  ghost:
+    image: ghost:6.65.0
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      url: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
+      database__client: mysql
+      database__connection__host: db
+      database__connection__user: root
+      database__connection__password: ${DB_PASSWORD}
+      database__connection__database: ghost
+      security__staffDeviceVerification: "false"
+      NODE_ENV: production
+    volumes: [content:/var/lib/ghost/content]
+  init:
+    image: curlimages/curl:8.16.0
+    depends_on: [ghost]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      OWNER_EMAIL: ${UNO_OWNER_EMAIL:?this computer has an old Uno agent - update the computer image to install apps}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+      APP_HOST: ${UNO_APP_HOST}
+    volumes: ["./init.sh:/init.sh:ro"]
+  front:
+    image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    command: ["TCP-LISTEN:2368,fork,reuseaddr", "TCP:ghost:2368"]
+    ports: ["2368:2368"]
+volumes:
+  db: {}
+  content: {}

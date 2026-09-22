@@ -1,0 +1,39 @@
+# Paperless-ngx — архив документов: сканы, чеки, договоры; распознаёт текст
+# (OCR), ищет по содержимому, раскладывает по тегам. SQLite + Redis.
+# Админ создаётся из переменных entrypoint'ом ДО старта веб-сервера (первый
+# открывший адрес админом не станет), регистрация закрыта.
+name: uno-paperless
+services:
+  broker:
+    image: redis:8
+    restart: unless-stopped
+    volumes: [redis:/data]
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:3.2.1
+    restart: unless-stopped
+    depends_on: [broker]
+    ports: ["8098:8000"]
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
+      PAPERLESS_SECRET_KEY: ${APP_SECRET:?APP_SECRET is not set}
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+      PAPERLESS_ADMIN_MAIL: ${UNO_OWNER_EMAIL:-}
+      PAPERLESS_ACCOUNT_ALLOW_SIGNUPS: "false"
+      PAPERLESS_SOCIAL_ACCOUNT_ALLOW_SIGNUPS: "false"
+      PAPERLESS_USE_X_FORWARD_HOST: "true"
+      PAPERLESS_USE_X_FORWARD_PORT: "true"
+      PAPERLESS_PROXY_SSL_HEADER: '["HTTP_X_FORWARDED_PROTO", "https"]'
+      # 4 ГБ на всю машину: один воркер, один поток.
+      PAPERLESS_TASK_WORKERS: "1"
+      PAPERLESS_THREADS_PER_WORKER: "1"
+      PAPERLESS_WEBSERVER_WORKERS: "1"
+      PAPERLESS_OCR_LANGUAGE: eng
+    volumes:
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+volumes:
+  redis: {}
+  data: {}
+  media: {}

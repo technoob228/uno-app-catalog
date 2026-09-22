@@ -1,0 +1,64 @@
+# Easy!Appointments — запись на встречи по ссылке, как Calendly: услуги
+# (типы встреч) с длительностью, рабочие часы, свободные слоты на публичной
+# странице, письма-подтверждения (если настроить SMTP), синк с календарём по
+# CalDAV (например, с Nextcloud) или Google. GPL-3.0. MariaDB внутри.
+# Админ создаётся при установке (init: console install на пустой БД + пароль
+# от Uno вместо сидового «administrator»), порт открывается только после
+# этого — см. lib/README-gate.md.
+name: uno-easyappointments
+x-ea-env: &ea-env
+  BASE_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
+  LANGUAGE: english
+  DEBUG_MODE: "FALSE"
+  DB_HOST: db
+  DB_NAME: easyappointments
+  DB_USERNAME: root
+  DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+  GOOGLE_SYNC_FEATURE: "FALSE"
+  MAIL_PROTOCOL: mail
+  MAIL_SMTP_DEBUG: "0"
+  MAIL_SMTP_AUTH: "FALSE"
+  MAIL_SMTP_PORT: "25"
+services:
+  db:
+    image: mariadb:11.8
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
+      MARIADB_DATABASE: easyappointments
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    volumes: [db:/var/lib/mysql]
+  easyappointments:
+    image: alextselegidis/easyappointments:1.6.0
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      <<: *ea-env
+    volumes: [storage:/var/www/html/storage]
+  init:
+    image: alextselegidis/easyappointments:1.6.0
+    restart: "no"
+    depends_on:
+      db: {condition: service_healthy}
+    entrypoint: ["/bin/bash", "/uno-init.sh"]
+    environment:
+      <<: *ea-env
+      OWNER_EMAIL: ${UNO_OWNER_EMAIL:?this computer has an old Uno agent - update the computer image to install apps}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+    volumes: ["./init.sh:/uno-init.sh:ro", "storage:/var/www/html/storage"]
+  front:
+    image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+      easyappointments: {condition: service_started}
+    command: ["TCP-LISTEN:80,fork,reuseaddr", "TCP:easyappointments:80"]
+    ports: ["8095:80"]
+volumes:
+  db: {}
+  storage: {}

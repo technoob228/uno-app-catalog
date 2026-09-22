@@ -1,0 +1,52 @@
+# EspoCRM — CRM для малого бизнеса: клиенты, сделки, задачи, звонки, письма,
+# календарь команды. AGPL-3.0. MariaDB внутри + фоновый демон (планировщик).
+# Админ и пароль задаются при установке entrypoint'ом ДО старта Apache; при
+# любой ошибке установки контейнер падает, не открыв мастер установки.
+# Публичной регистрации в EspoCRM нет — пользователей заводит админ.
+name: uno-espocrm
+x-espo-env: &espo-env
+  ESPOCRM_DATABASE_PLATFORM: Mysql
+  ESPOCRM_DATABASE_HOST: db
+  ESPOCRM_DATABASE_USER: root
+  ESPOCRM_DATABASE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+  ESPOCRM_DATABASE_NAME: espocrm
+  ESPOCRM_ADMIN_USERNAME: admin
+  ESPOCRM_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+  ESPOCRM_SITE_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
+services:
+  db:
+    image: mariadb:11.8
+    restart: unless-stopped
+    command: ["--innodb-buffer-pool-size=64M"]
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
+      MARIADB_DATABASE: espocrm
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    volumes: [db:/var/lib/mysql]
+  espocrm:
+    image: espocrm/espocrm:10.0.8
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      <<: *espo-env
+    ports: ["8089:80"]
+    # НЕ монтировать /var/www/html целиком: это «legacy»-режим, в нём
+    # entrypoint пропускает установку и Apache отдаёт мастер /install первому
+    # встречному. Только эти три каталога (docs EspoCRM 10).
+    volumes: [data:/var/www/html/data, custom:/var/www/html/custom, client-custom:/var/www/html/client/custom]
+  daemon:
+    image: espocrm/espocrm:10.0.8
+    restart: unless-stopped
+    depends_on: [espocrm]
+    entrypoint: docker-daemon.sh
+    volumes: [data:/var/www/html/data, custom:/var/www/html/custom, client-custom:/var/www/html/client/custom]
+volumes:
+  db: {}
+  data: {}
+  custom: {}
+  client-custom: {}

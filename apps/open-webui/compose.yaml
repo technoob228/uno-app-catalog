@@ -1,0 +1,32 @@
+# Open WebUI — свой ChatGPT: чаты, файлы, модели ИИ-шлюза Uno (50+ моделей,
+# оплата из баланса LLM аккаунта). Отдельный ключ шлюза для этого приложения
+# выдаёт установка (UNO_LLM_API_KEY), отзывается вместе с компьютером.
+# Админ создаётся из переменных при старте (пока пользователей нет), публичная
+# регистрация выключена — остальных админ добавляет в панели.
+name: uno-open-webui
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.11.4
+    restart: unless-stopped
+    ports: ["8097:8080"]
+    environment:
+      WEBUI_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
+      WEBUI_SECRET_KEY: ${APP_SECRET:?APP_SECRET is not set}
+      WEBUI_ADMIN_EMAIL: ${UNO_OWNER_EMAIL:?this computer has an old Uno agent - update the computer image to install apps}
+      WEBUI_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+      WEBUI_ADMIN_NAME: Owner
+      ENABLE_SIGNUP: "false"
+      ENABLE_OLLAMA_API: "false"
+      OPENAI_API_BASE_URL: ${UNO_LLM_BASE_URL:?this Uno console does not issue AI gateway keys yet}
+      OPENAI_API_KEY: ${UNO_LLM_API_KEY:?this Uno console does not issue AI gateway keys yet}
+      # Не тянуть локальные модели эмбеддингов/Whisper (гигабайты RAM и диска).
+      OFFLINE_MODE: "true"
+      RAG_EMBEDDING_ENGINE: openai
+      RAG_OPENAI_API_BASE_URL: ${UNO_LLM_BASE_URL}
+      RAG_OPENAI_API_KEY: ${UNO_LLM_API_KEY}
+      AUDIO_STT_ENGINE: openai
+      ENABLE_VERSION_UPDATE_CHECK: "false"
+      ANONYMIZED_TELEMETRY: "false"
+    volumes: [data:/app/backend/data]
+volumes:
+  data: {}

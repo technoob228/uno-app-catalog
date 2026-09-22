@@ -1,0 +1,52 @@
+# Lychee — семейный фотоальбом: альбомы, общий доступ по ссылке, карта, EXIF.
+# Легче Immich (нет автозагрузки с телефона — загрузка через браузер). MIT.
+# SQLite. Админ создаётся при установке (init → artisan lychee:create_user
+# --may-administrate), порт открывается только после этого — см.
+# lib/README-gate.md. Ключ Laravel (APP_KEY) генерируется один раз в volume.
+name: uno-lychee
+x-lychee-env: &lychee-env
+  APP_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
+  APP_KEY_FILE: /keys/app_key
+  APP_ENV: production
+  APP_DEBUG: "false"
+  DB_CONNECTION: sqlite
+  DB_DATABASE: /data/lychee.sqlite
+  TRUSTED_PROXIES: "*"
+  TIMEZONE: UTC
+services:
+  prepare:
+    image: busybox:1.37
+    command:
+      - sh
+      - -c
+      - '[ -s /keys/app_key ] || echo "base64:$$(head -c 32 /dev/urandom | base64)" > /keys/app_key; chmod 644 /keys/app_key; touch /data/lychee.sqlite; chown -R 33:33 /data'
+    volumes: [keys:/keys, data:/data]
+  lychee:
+    image: lycheeorg/lychee:v7.8.5
+    restart: unless-stopped
+    depends_on:
+      prepare: {condition: service_completed_successfully}
+    environment:
+      <<: *lychee-env
+    volumes: [keys:/keys:ro, data:/data, uploads:/app/public/uploads]
+  init:
+    image: lycheeorg/lychee:v7.8.5
+    restart: "no"
+    depends_on:
+      lychee: {condition: service_started}
+    entrypoint: ["/bin/bash", "/uno-init.sh"]
+    environment:
+      <<: *lychee-env
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+    volumes: ["./init.sh:/uno-init.sh:ro", "keys:/keys:ro", "data:/data", "uploads:/app/public/uploads"]
+  front:
+    image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    command: ["TCP-LISTEN:8000,fork,reuseaddr", "TCP:lychee:8000"]
+    ports: ["8099:8000"]
+volumes:
+  keys: {}
+  data: {}
+  uploads: {}
