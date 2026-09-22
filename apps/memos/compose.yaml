@@ -1,0 +1,13 @@
+# Memos — быстрые заметки и мысли лентой (как личный Twitter/Keep). SQLite.
+# Первый зарегистрированный — владелец.
+name: uno-memos
+services:
+  memos:
+    image: neosmemo/memos:0.31
+    restart: unless-stopped
+    ports: ["5230:5230"]
+    environment:
+      MEMOS_INSTANCE_URL: ${UNO_APP_URL:?UNO_APP_URL is not set}
+    volumes: [data:/var/opt/memos]
+volumes:
+  data: {}

@@ -1,0 +1,24 @@
+# Vikunja — задачи и проекты: списки, канбан, сроки, напоминания. Один
+# контейнер, SQLite. Первый аккаунт регистрируется на странице входа.
+name: uno-vikunja
+services:
+  perms:
+    image: busybox:1.37
+    command: ["chown", "-R", "1000:1000", "/db", "/files"]
+    volumes: [db:/db, files:/files]
+  vikunja:
+    image: vikunja/vikunja:2.6.0
+    restart: unless-stopped
+    depends_on:
+      perms: {condition: service_completed_successfully}
+    ports: ["3456:3456"]
+    environment:
+      VIKUNJA_SERVICE_PUBLICURL: ${UNO_APP_URL:?UNO_APP_URL is not set}/
+      VIKUNJA_SERVICE_SECRET: ${APP_SECRET:?APP_SECRET is not set}
+      VIKUNJA_SERVICE_ENABLEREGISTRATION: ${SIGNUPS_ALLOWED:-true}
+      VIKUNJA_DATABASE_TYPE: sqlite
+      VIKUNJA_DATABASE_PATH: /db/vikunja.db
+    volumes: [db:/db, files:/app/vikunja/files]
+volumes:
+  db: {}
+  files: {}

@@ -1,0 +1,27 @@
+# Jellyfin — свой «Netflix»: фильмы, сериалы и музыка в браузере и на ТВ.
+# Медиа — папка Media в домашней папке Uno Work (/home/unowork/Media): её
+# видно в «Файлах», туда кладутся фильмы. Админ создаётся мастером при первом
+# входе. Транскодирование на CPU медленное — лучше файлы в H.264/MP4.
+name: uno-jellyfin
+services:
+  media-dir:
+    image: busybox:1.37
+    # Папка Media с владельцем как у домашней папки — чтобы «Файлы» Uno Work
+    # могли туда писать. Идемпотентно.
+    command: ["sh", "-c", "mkdir -p /host/Media && chown $$(stat -c %u:%g /host) /host/Media"]
+    volumes: ["/home/unowork:/host"]
+  jellyfin:
+    image: jellyfin/jellyfin:12.1
+    restart: unless-stopped
+    depends_on:
+      media-dir: {condition: service_completed_successfully}
+    ports: ["8096:8096"]
+    environment:
+      JELLYFIN_PublishedServerUrl: ${UNO_APP_URL:?UNO_APP_URL is not set}
+    volumes:
+      - config:/config
+      - cache:/cache
+      - /home/unowork/Media:/media:ro
+volumes:
+  config: {}
+  cache: {}

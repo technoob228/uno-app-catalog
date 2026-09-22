@@ -1,0 +1,17 @@
+# Pingvin Share X — отправить большой файл по ссылке (как WeTransfer):
+# срок жизни ссылки, пароль, лимит скачиваний. Первый аккаунт — админ.
+name: uno-pingvin-share
+services:
+  pingvin:
+    image: smp46/pingvin-share-x:v1.22.3
+    restart: unless-stopped
+    ports: ["8094:3000"]
+    environment:
+      TRUST_PROXY: "true"
+      APP_URL: ${UNO_APP_URL:?UNO_APP_URL is not set}
+    volumes:
+      - data:/opt/app/backend/data
+      - images:/opt/app/frontend/public/img
+volumes:
+  data: {}
+  images: {}

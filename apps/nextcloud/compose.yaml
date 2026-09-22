@@ -1,0 +1,45 @@
+# Nextcloud — свои файлы, календарь и контакты. Установка без мастера:
+# админ создаётся из переменных. БД — SQLite (1–5 человек), фоновые задачи —
+# отдельный контейнер cron. Файлы: volume машины или внешнее S3
+# (STORAGE=s3 → OBJECTSTORE_S3_*; применяется ТОЛЬКО при первой установке).
+name: uno-nextcloud
+x-nc-env: &nc-env
+  SQLITE_DATABASE: nextcloud
+  NEXTCLOUD_ADMIN_USER: ${ADMIN_USER:-admin}
+  NEXTCLOUD_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+  NEXTCLOUD_TRUSTED_DOMAINS: ${UNO_APP_HOST:?UNO_APP_HOST is not set}
+  TRUSTED_PROXIES: "10.0.0.0/8 172.16.0.0/12 192.168.0.0/16"
+  OVERWRITEPROTOCOL: https
+  OVERWRITEHOST: ${UNO_APP_HOST}
+  OVERWRITECLIURL: ${UNO_APP_URL:?UNO_APP_URL is not set}
+  PHP_MEMORY_LIMIT: 512M
+  PHP_UPLOAD_LIMIT: 16G
+  # S3 — только если выбрано STORAGE=s3; пустой OBJECTSTORE_S3_BUCKET = диск.
+  OBJECTSTORE_S3_BUCKET: ${S3_BUCKET:-}
+  OBJECTSTORE_S3_HOST: ${S3_HOST:-}
+  OBJECTSTORE_S3_PORT: ${S3_PORT:-443}
+  OBJECTSTORE_S3_KEY: ${S3_ACCESS_KEY:-}
+  OBJECTSTORE_S3_SECRET: ${S3_SECRET_KEY:-}
+  OBJECTSTORE_S3_REGION: ${S3_REGION:-us-east-1}
+  OBJECTSTORE_S3_SSL: "true"
+  OBJECTSTORE_S3_USEPATH_STYLE: "true"
+  OBJECTSTORE_S3_AUTOCREATE: "true"
+  OBJECTSTORE_S3_OBJECT_PREFIX: "urn:oid:"
+services:
+  app:
+    image: nextcloud:35.0.0-apache
+    restart: unless-stopped
+    ports: ["8090:80"]
+    environment:
+      <<: *nc-env
+    volumes: [nc:/var/www/html]
+  cron:
+    image: nextcloud:35.0.0-apache
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    depends_on: [app]
+    environment:
+      <<: *nc-env
+    volumes: [nc:/var/www/html]
+volumes:
+  nc: {}

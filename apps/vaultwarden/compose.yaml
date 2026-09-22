@@ -1,0 +1,16 @@
+# Vaultwarden — сервер паролей, совместимый с приложениями Bitwarden.
+# Web vault требует HTTPS (WebCrypto) — его даёт прокси ноды.
+name: uno-vaultwarden
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.37.3
+    restart: unless-stopped
+    ports: ["8091:80"]
+    environment:
+      DOMAIN: ${UNO_APP_URL:?UNO_APP_URL is not set}
+      SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED:-true}
+      # Прокси ноды — единственный вход; реальный IP клиента в X-Real-IP.
+      IP_HEADER: X-Real-IP
+    volumes: [data:/data]
+volumes:
+  data: {}

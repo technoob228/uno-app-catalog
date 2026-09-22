@@ -1,0 +1,62 @@
+# Чат — свой мессенджер на протоколе Matrix: сервер Tuwunel (Rust, встроенная
+# БД, Apache-2.0) + веб-клиент Element на ОДНОМ адресе. Caddy внутри делит
+# трафик: /_matrix и /.well-known/matrix — серверу, остальное — Element.
+# Регистрация только по коду приглашения (INVITE_CODE); первый
+# зарегистрированный становится админом сервера. Имя сервера = адрес
+# приложения, сменить потом нельзя без потери данных.
+name: uno-chat
+services:
+  tuwunel:
+    image: jevolk/tuwunel:v1.9.2
+    restart: unless-stopped
+    stop_grace_period: 2m
+    environment:
+      TUWUNEL_SERVER_NAME: ${UNO_APP_HOST:?UNO_APP_HOST is not set}
+      TUWUNEL_DATABASE_PATH: /var/lib/tuwunel
+      TUWUNEL_ADDRESS: 0.0.0.0
+      TUWUNEL_PORT: "6167"
+      TUWUNEL_ALLOW_REGISTRATION: "true"
+      TUWUNEL_REGISTRATION_TOKEN: ${INVITE_CODE:?INVITE_CODE is not set}
+      TUWUNEL_ALLOW_FEDERATION: "true"
+      TUWUNEL_WELL_KNOWN__CLIENT: ${UNO_APP_URL:?UNO_APP_URL is not set}
+      TUWUNEL_WELL_KNOWN__SERVER: ${UNO_APP_HOST}:443
+      TUWUNEL_MAX_REQUEST_SIZE: "50000000"
+      TUWUNEL_NEW_USER_DISPLAYNAME_SUFFIX: ""
+    volumes: [db:/var/lib/tuwunel]
+  element:
+    image: vectorim/element-web:v1.12.29
+    restart: unless-stopped
+    environment:
+      ELEMENT_WEB_PORT: "8081"
+    configs:
+      - source: element_cfg
+        target: /app/config.json
+  front:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [tuwunel, element]
+    ports: ["8092:80"]
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+configs:
+  caddyfile:
+    content: |
+      {
+        admin off
+        auto_https off
+      }
+      :80 {
+        route {
+          reverse_proxy /_matrix/* tuwunel:6167
+          reverse_proxy /.well-known/matrix/* tuwunel:6167
+          reverse_proxy element:8081
+        }
+      }
+  element_cfg:
+    content: |
+      {"default_server_config":{"m.homeserver":{"base_url":"${UNO_APP_URL}","server_name":"${UNO_APP_HOST}"}},
+       "disable_custom_urls":true,"disable_guests":true,"brand":"Uno Chat",
+       "show_labs_settings":false,"default_theme":"light"}
+volumes:
+  db: {}

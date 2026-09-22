@@ -1,0 +1,33 @@
+# Docmost — вики и документы «как Notion»: страницы, совместное
+# редактирование, пространства. Postgres + Redis внутри. Рабочее пространство
+# и админ создаются на первом экране.
+name: uno-docmost
+services:
+  docmost:
+    image: docmost/docmost:0.96.0
+    restart: unless-stopped
+    depends_on: [db, redis]
+    ports: ["8093:3000"]
+    environment:
+      APP_URL: ${UNO_APP_URL:?UNO_APP_URL is not set}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is not set}
+      DATABASE_URL: postgresql://docmost:${DB_PASSWORD:?DB_PASSWORD is not set}@db:5432/docmost?schema=public
+      REDIS_URL: redis://redis:6379
+    volumes: [storage:/app/data/storage]
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: docmost
+      POSTGRES_USER: docmost
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes: [db:/var/lib/postgresql]
+  redis:
+    image: redis:8
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes: [redis:/data]
+volumes:
+  storage: {}
+  db: {}
+  redis: {}
