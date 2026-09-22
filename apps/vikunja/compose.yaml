@@ -1,5 +1,9 @@
 # Vikunja — задачи и проекты: списки, канбан, сроки, напоминания. Один
-# контейнер, SQLite. Первый аккаунт регистрируется на странице входа.
+# контейнер, SQLite.
+# Аккаунт владельца (логин owner) создаётся при установке; остальные
+# регистрируются только по пригласительной ссылке <адрес>/uno-invite/<INVITE_KEY>
+# (Caddy ставит cookie, без неё /api/v1/register отвечает 403). Порт
+# открывается только после создания владельца — см. lib/README-gate.md.
 name: uno-vikunja
 services:
   perms:
@@ -11,14 +15,33 @@ services:
     restart: unless-stopped
     depends_on:
       perms: {condition: service_completed_successfully}
-    ports: ["3456:3456"]
     environment:
       VIKUNJA_SERVICE_PUBLICURL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}/
       VIKUNJA_SERVICE_SECRET: ${APP_SECRET:?APP_SECRET is not set}
-      VIKUNJA_SERVICE_ENABLEREGISTRATION: ${SIGNUPS_ALLOWED:-true}
+      # Регистрацию закрывают ворота front (по пригласительной ссылке).
+      VIKUNJA_SERVICE_ENABLEREGISTRATION: "true"
       VIKUNJA_DATABASE_TYPE: sqlite
       VIKUNJA_DATABASE_PATH: /db/vikunja.db
     volumes: [db:/db, files:/app/vikunja/files]
+  init:
+    image: curlimages/curl:8.16.0
+    depends_on: [vikunja]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      OWNER_EMAIL: ${UNO_OWNER_EMAIL:?this computer has an old Uno agent - update the computer image to install apps}
+      ADMIN_USER: owner
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+    volumes: ["./init.sh:/init.sh:ro"]
+  front:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      INVITE_KEY: ${INVITE_KEY:?INVITE_KEY is not set}
+    ports: ["3456:80"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro"]
 volumes:
   db: {}
   files: {}

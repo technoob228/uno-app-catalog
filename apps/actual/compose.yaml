@@ -1,13 +1,28 @@
 # Actual Budget — личный бюджет по конвертам: счета, категории, отчёты.
-# Пароль сервера задаётся на первом экране.
+# Пароль сервера задаётся при установке (сгенерирован Uno), порт открывается
+# только после этого — см. lib/README-gate.md.
 name: uno-actual
 services:
   actual:
     image: actualbudget/actual-server:26.9.0
     restart: unless-stopped
-    ports: ["5006:5006"]
     environment:
       ACTUAL_TRUSTED_PROXIES: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
     volumes: [data:/data]
+  init:
+    image: curlimages/curl:8.16.0
+    depends_on: [actual]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+    volumes: ["./init.sh:/init.sh:ro"]
+  front:
+    image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    command: ["TCP-LISTEN:5006,fork,reuseaddr", "TCP:actual:5006"]
+    ports: ["5006:5006"]
 volumes:
   data: {}

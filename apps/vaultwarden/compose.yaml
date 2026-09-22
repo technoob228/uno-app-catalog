@@ -1,16 +1,32 @@
 # Vaultwarden — сервер паролей, совместимый с приложениями Bitwarden.
 # Web vault требует HTTPS (WebCrypto) — его даёт прокси ноды.
+#
+# Регистрация — только по пригласительной ссылке. Мастер-пароль сейфа по
+# смыслу знает только его хозяин (им шифруется сейф на устройстве), поэтому
+# аккаунт владельца установка НЕ создаёт: владелец открывает ссылку
+# <адрес>/uno-invite/<INVITE_KEY> из карточки приложения в Uno Work, Caddy
+# ставит cookie и пропускает ручки регистрации; без неё они отвечают 403.
+# Этой же ссылкой владелец зовёт семью. Админ-панель /admin выключена (нет
+# ADMIN_TOKEN).
 name: uno-vaultwarden
 services:
   vaultwarden:
     image: vaultwarden/server:1.37.3
     restart: unless-stopped
-    ports: ["8091:80"]
     environment:
       DOMAIN: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
-      SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED:-true}
+      # Регистрацию закрывают ворота front (по пригласительной ссылке).
+      SIGNUPS_ALLOWED: "true"
       # Прокси ноды — единственный вход; реальный IP клиента в X-Real-IP.
       IP_HEADER: X-Real-IP
     volumes: [data:/data]
+  front:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [vaultwarden]
+    environment:
+      INVITE_KEY: ${INVITE_KEY:?INVITE_KEY is not set}
+    ports: ["8091:80"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro"]
 volumes:
   data: {}

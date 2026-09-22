@@ -1,0 +1,30 @@
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	# Пригласительная ссылка: cookie на 30 дней → страница регистрации.
+	@invite path /uno-invite/{$INVITE_KEY}
+	handle @invite {
+		header Set-Cookie "uno_invite={$INVITE_KEY}; Path=/; Max-Age=2592000; Secure; HttpOnly; SameSite=Lax"
+		redir * /#/signup 302
+	}
+
+	# Регистрация без приглашения закрыта.
+	@signup_closed {
+		path /identity/accounts/register /identity/accounts/register/* /api/accounts/register /api/accounts/register/*
+		not header_regexp Cookie (^|;\s*)uno_invite={$INVITE_KEY}(;|$)
+	}
+	handle @signup_closed {
+		header Content-Type application/json
+		respond `{"message":"Sign-ups are by invitation only. Ask the owner of this vault for the invite link.","validationErrors":{"":["Sign-ups are by invitation only. Ask the owner of this vault for the invite link."]},"errorModel":{"message":"Sign-ups are by invitation only. Ask the owner of this vault for the invite link.","object":"error"},"object":"error"}` 403
+	}
+
+	handle {
+		reverse_proxy vaultwarden:80
+	}
+}

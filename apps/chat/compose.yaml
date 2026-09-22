@@ -1,9 +1,11 @@
 # Чат — свой мессенджер на протоколе Matrix: сервер Tuwunel (Rust, встроенная
 # БД, Apache-2.0) + веб-клиент Element на ОДНОМ адресе. Caddy внутри делит
 # трафик: /_matrix и /.well-known/matrix — серверу, остальное — Element.
-# Регистрация только по коду приглашения (INVITE_CODE); первый
-# зарегистрированный становится админом сервера. Имя сервера = адрес
-# приложения, сменить потом нельзя без потери данных.
+# Аккаунт владельца (owner, первый пользователь = админ сервера) создаётся
+# при установке; остальные регистрируются только по коду приглашения
+# (INVITE_CODE, генерирует Uno, виден владельцу в карточке). Порт открывается
+# только после создания владельца. Имя сервера = адрес приложения, сменить
+# потом нельзя без потери данных.
 name: uno-chat
 services:
   tuwunel:
@@ -31,10 +33,22 @@ services:
     configs:
       - source: element_cfg
         target: /app/config.json
+  init:
+    image: curlimages/curl:8.16.0
+    depends_on: [tuwunel]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      ADMIN_USER: owner
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+      INVITE_CODE: ${INVITE_CODE}
+    volumes: ["./init.sh:/init.sh:ro"]
   front:
     image: caddy:2-alpine
     restart: unless-stopped
-    depends_on: [tuwunel, element]
+    depends_on:
+      element: {condition: service_started}
+      init: {condition: service_completed_successfully}
     ports: ["8092:80"]
     configs:
       - source: caddyfile

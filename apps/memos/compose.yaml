@@ -1,13 +1,29 @@
 # Memos — быстрые заметки и мысли лентой (как личный Twitter/Keep). SQLite.
-# Первый зарегистрированный — владелец.
+# Владелец создаётся при установке, регистрация посторонних закрыта; порт
+# открывается только после этого — см. lib/README-gate.md.
 name: uno-memos
 services:
   memos:
     image: neosmemo/memos:0.31
     restart: unless-stopped
-    ports: ["5230:5230"]
     environment:
       MEMOS_INSTANCE_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
     volumes: [data:/var/opt/memos]
+  init:
+    image: curlimages/curl:8.16.0
+    depends_on: [memos]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      ADMIN_USER: owner
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+    volumes: ["./init.sh:/init.sh:ro"]
+  front:
+    image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    command: ["TCP-LISTEN:5230,fork,reuseaddr", "TCP:memos:5230"]
+    ports: ["5230:5230"]
 volumes:
   data: {}

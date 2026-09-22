@@ -1,13 +1,13 @@
 # Immich — фото и видео с телефона (как Google Photos): автозагрузка из
 # приложения, альбомы, общий доступ. Без машинного обучения (поиск по лицам и
-# смыслу выключен) — иначе нужно 6 ГБ+. Первый зарегистрированный — админ.
+# смыслу выключен) — иначе нужно 6 ГБ+. Админ (email владельца) создаётся при
+# установке, порт открывается только после этого — см. lib/README-gate.md.
 # Образы — из официального compose релиза v3.2.2 (postgres закреплён digest'ом).
 name: uno-immich
 services:
   immich-server:
     image: ghcr.io/immich-app/immich-server:v3.2.2
     restart: unless-stopped
-    ports: ["2283:2283"]
     depends_on: [redis, database]
     environment:
       DB_HOSTNAME: database
@@ -33,6 +33,22 @@ services:
       POSTGRES_INITDB_ARGS: "--data-checksums"
     shm_size: 128mb
     volumes: [db:/var/lib/postgresql/data]
+  init:
+    image: curlimages/curl:8.16.0
+    depends_on: [immich-server]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      OWNER_EMAIL: ${UNO_OWNER_EMAIL:?this computer has an old Uno agent - update the computer image to install apps}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+    volumes: ["./init.sh:/init.sh:ro"]
+  front:
+    image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    command: ["TCP-LISTEN:2283,fork,reuseaddr", "TCP:immich-server:2283"]
+    ports: ["2283:2283"]
 volumes:
   library: {}
   db: {}

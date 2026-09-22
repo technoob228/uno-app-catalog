@@ -1,13 +1,13 @@
 # Docmost — вики и документы «как Notion»: страницы, совместное
 # редактирование, пространства. Postgres + Redis внутри. Рабочее пространство
-# и админ создаются на первом экране.
+# и админ (email владельца) создаются при установке, порт открывается только
+# после этого — см. lib/README-gate.md.
 name: uno-docmost
 services:
   docmost:
     image: docmost/docmost:0.96.0
     restart: unless-stopped
     depends_on: [db, redis]
-    ports: ["8093:3000"]
     environment:
       APP_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
       APP_SECRET: ${APP_SECRET:?APP_SECRET is not set}
@@ -27,6 +27,22 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     volumes: [redis:/data]
+  init:
+    image: curlimages/curl:8.16.0
+    depends_on: [docmost]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      OWNER_EMAIL: ${UNO_OWNER_EMAIL:?this computer has an old Uno agent - update the computer image to install apps}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+    volumes: ["./init.sh:/init.sh:ro"]
+  front:
+    image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    command: ["TCP-LISTEN:3000,fork,reuseaddr", "TCP:docmost:3000"]
+    ports: ["8093:3000"]
 volumes:
   storage: {}
   db: {}

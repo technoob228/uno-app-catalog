@@ -1,7 +1,9 @@
 # Jellyfin — свой «Netflix»: фильмы, сериалы и музыка в браузере и на ТВ.
 # Медиа — папка Media в домашней папке Uno Work (/home/unowork/Media): её
-# видно в «Файлах», туда кладутся фильмы. Админ создаётся мастером при первом
-# входе. Транскодирование на CPU медленное — лучше файлы в H.264/MP4.
+# видно в «Файлах», туда кладутся фильмы. Транскодирование на CPU медленное —
+# лучше файлы в H.264/MP4.
+# Админ создаётся при установке (init → мастер первого входа через API,
+# медиатека /media), порт открывается только после этого — см. lib/README-gate.md.
 name: uno-jellyfin
 services:
   media-dir:
@@ -15,13 +17,28 @@ services:
     restart: unless-stopped
     depends_on:
       media-dir: {condition: service_completed_successfully}
-    ports: ["8096:8096"]
     environment:
       JELLYFIN_PublishedServerUrl: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
     volumes:
       - config:/config
       - cache:/cache
       - /home/unowork/Media:/media:ro
+  init:
+    image: curlimages/curl:8.16.0
+    depends_on: [jellyfin]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+    volumes: ["./init.sh:/init.sh:ro"]
+  front:
+    image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    command: ["TCP-LISTEN:8096,fork,reuseaddr", "TCP:jellyfin:8096"]
+    ports: ["8096:8096"]
 volumes:
   config: {}
   cache: {}
