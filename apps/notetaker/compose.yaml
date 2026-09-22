@@ -1,0 +1,37 @@
+# Notetaker — заметки со встреч: запись звонка во вкладке (Meet/Zoom/Teams в
+# браузере) или загрузка файла → транскрипт с таймкодами и спикерами →
+# итоги, решения, задачи; «спросить о встрече»; ссылка на заметки.
+# Исходники: technoob228/uno-notetaker (MIT).
+#
+# Ворота (lib/README-gate.md): приложение само не пускает никого без пароля
+# ADMIN_PASSWORD (его генерирует Uno и показывает в карточке) и без него не
+# стартует, поэтому порт публикуется напрямую — «первого открывшего» нет.
+#
+# ИИ: UNO_LLM_API_KEY — собственный ключ шлюза приложения (выдаёт App Store,
+# llm_key в каталоге, с потолком расхода). На Work-машине без него приложение
+# берёт ключ самой машины из /var/lib/uno-work/userdata (только чтение).
+#
+# Данные — в домашней папке человека, чтобы их видели «Файлы» и ИИ машины:
+# ~/Meetings/<дата время название>/{audio/, transcript.md, notes.md};
+# ~/.uno/apps/notetaker.json — значок на рабочем столе Uno Work.
+name: uno-notetaker
+services:
+  notetaker:
+    image: ghcr.io/technoob228/uno-notetaker:0.1.0
+    restart: unless-stopped
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
+      UNO_APP_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
+      UNO_LLM_API_KEY: ${UNO_LLM_API_KEY:-}
+      UNO_LLM_BASE_URL: ${UNO_LLM_BASE_URL:-https://api.getuno.xyz/v1}
+    volumes:
+      - /home/unowork/Meetings:/meetings
+      - /home/unowork/.uno:/uno-dot
+      # каталог, а не файл: отсутствующий файл docker создал бы папкой и
+      # сломал бы Uno Work
+      - /var/lib/uno-work/userdata:/uno-work:ro
+      - state:/state
+    ports: ["8430:8430"]
+    mem_limit: 1500m
+volumes:
+  state: {}
