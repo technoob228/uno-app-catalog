@@ -13,7 +13,7 @@ services:
       perms: {condition: service_completed_successfully}
     ports: ["3456:3456"]
     environment:
-      VIKUNJA_SERVICE_PUBLICURL: ${UNO_APP_URL:?UNO_APP_URL is not set}/
+      VIKUNJA_SERVICE_PUBLICURL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}/
       VIKUNJA_SERVICE_SECRET: ${APP_SECRET:?APP_SECRET is not set}
       VIKUNJA_SERVICE_ENABLEREGISTRATION: ${SIGNUPS_ALLOWED:-true}
       VIKUNJA_DATABASE_TYPE: sqlite

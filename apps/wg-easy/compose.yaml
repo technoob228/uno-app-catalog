@@ -19,8 +19,8 @@ services:
       INIT_ENABLED: "true"
       INIT_USERNAME: ${ADMIN_USER:-admin}
       INIT_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
-      INIT_HOST: ${UNO_BOX_HOST:?UNO_BOX_HOST is not set}
-      INIT_PORT: ${UNO_PORT_51820_UDP:?UNO_PORT_51820_UDP is not set}
+      INIT_HOST: ${UNO_BOX_HOST:?this computer has an old Uno agent - update the computer image to install apps}
+      INIT_PORT: ${UNO_PORT_51820_UDP:?this computer has an old Uno agent - update the computer image to install apps}
       INIT_DNS: "1.1.1.1,8.8.8.8"
       DISABLE_IPV6: "true"
       WG_QUICK_USERSPACE_IMPLEMENTATION: wireguard-go

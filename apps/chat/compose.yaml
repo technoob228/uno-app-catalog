@@ -11,14 +11,14 @@ services:
     restart: unless-stopped
     stop_grace_period: 2m
     environment:
-      TUWUNEL_SERVER_NAME: ${UNO_APP_HOST:?UNO_APP_HOST is not set}
+      TUWUNEL_SERVER_NAME: ${UNO_APP_HOST:?this computer has an old Uno agent - update the computer image to install apps}
       TUWUNEL_DATABASE_PATH: /var/lib/tuwunel
       TUWUNEL_ADDRESS: 0.0.0.0
       TUWUNEL_PORT: "6167"
       TUWUNEL_ALLOW_REGISTRATION: "true"
       TUWUNEL_REGISTRATION_TOKEN: ${INVITE_CODE:?INVITE_CODE is not set}
       TUWUNEL_ALLOW_FEDERATION: "true"
-      TUWUNEL_WELL_KNOWN__CLIENT: ${UNO_APP_URL:?UNO_APP_URL is not set}
+      TUWUNEL_WELL_KNOWN__CLIENT: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
       TUWUNEL_WELL_KNOWN__SERVER: ${UNO_APP_HOST}:443
       TUWUNEL_MAX_REQUEST_SIZE: "50000000"
       TUWUNEL_NEW_USER_DISPLAYNAME_SUFFIX: ""

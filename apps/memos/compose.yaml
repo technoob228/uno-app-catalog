@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     ports: ["5230:5230"]
     environment:
-      MEMOS_INSTANCE_URL: ${UNO_APP_URL:?UNO_APP_URL is not set}
+      MEMOS_INSTANCE_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
     volumes: [data:/var/opt/memos]
 volumes:
   data: {}

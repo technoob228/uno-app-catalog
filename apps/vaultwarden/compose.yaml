@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     ports: ["8091:80"]
     environment:
-      DOMAIN: ${UNO_APP_URL:?UNO_APP_URL is not set}
+      DOMAIN: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
       SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED:-true}
       # Прокси ноды — единственный вход; реальный IP клиента в X-Real-IP.
       IP_HEADER: X-Real-IP

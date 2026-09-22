@@ -17,7 +17,7 @@ services:
       media-dir: {condition: service_completed_successfully}
     ports: ["8096:8096"]
     environment:
-      JELLYFIN_PublishedServerUrl: ${UNO_APP_URL:?UNO_APP_URL is not set}
+      JELLYFIN_PublishedServerUrl: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
     volumes:
       - config:/config
       - cache:/cache

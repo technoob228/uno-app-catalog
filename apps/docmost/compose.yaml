@@ -9,7 +9,7 @@ services:
     depends_on: [db, redis]
     ports: ["8093:3000"]
     environment:
-      APP_URL: ${UNO_APP_URL:?UNO_APP_URL is not set}
+      APP_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
       APP_SECRET: ${APP_SECRET:?APP_SECRET is not set}
       DATABASE_URL: postgresql://docmost:${DB_PASSWORD:?DB_PASSWORD is not set}@db:5432/docmost?schema=public
       REDIS_URL: redis://redis:6379
