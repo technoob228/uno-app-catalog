@@ -50,7 +50,9 @@ services:
       <<: *ea-env
       OWNER_EMAIL: ${UNO_OWNER_EMAIL:?this computer has an old Uno agent - update the computer image to install apps}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
-    volumes: ["./init.sh:/uno-init.sh:ro", "storage:/var/www/html/storage"]
+    # Без volume storage: init и приложение создаются одновременно, и docker
+    # копировал бы содержимое образа в один новый volume дважды («file exists»).
+    volumes: ["./init.sh:/uno-init.sh:ro"]
   front:
     image: alpine/socat@sha256:24220ef2c80a2a421ea08e4624488e985330c421b6aa3329bae14b0933a1d403
     restart: unless-stopped
