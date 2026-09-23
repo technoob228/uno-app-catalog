@@ -7,11 +7,18 @@
 # ADMIN_PASSWORD (его генерирует Uno и показывает в карточке) и без него не
 # стартует, поэтому порт публикуется напрямую — «первого открывшего» нет.
 #
-# ИИ: UNO_LLM_API_KEY — собственный ключ шлюза приложения (выдаёт App Store,
-# llm_key в каталоге, потолок расхода $10 по умолчанию, меняется в карточке).
-# Папку состояния Uno Work (/var/lib/uno-work/userdata — там ключ машины,
-# ключ кук, токен агента) в контейнер НЕ монтируем: с ключом приложения она
-# не нужна, а ключ машины позволил бы обойти потолок расхода.
+# ИИ — «ИИ этого компьютера» (Uno App API демона Uno Work, docs/app-sdk.md в
+# uno-work): манифест ~/.uno/apps/notetaker.json просит "ai": {"chat": true,
+# "tasks": false, "limitUsd": 10}, демон выдаёт приложению СВОЙ токен в
+# ~/.uno/app-keys/notetaker/ (расход считается на приложение, потолок $10,
+# поднимает человек в Uno Work → Settings → Apps). В контейнер монтируется
+# только эта папка (ro, /run/uno-app) и ~/.uno/apps (манифест) — НЕ весь
+# ~/.uno: там ключи всех остальных приложений. API демона — на хосте, из
+# контейнера через host.docker.internal (extra_hosts).
+# UNO_LLM_API_KEY — запасной путь для машин, где у Uno Work ещё нет App API
+# (собственный ключ шлюза приложения, llm_key в каталоге). Папку состояния
+# Uno Work (/var/lib/uno-work/userdata — ключ машины, ключ кук, токен агента)
+# в контейнер НЕ монтируем: ключ машины позволил бы обойти потолок расхода.
 #
 # PUID/PGID 1002 = пользователь unowork в образе Work (≥153): встречи в
 # ~/Meetings принадлежат человеку, «Файлы» их открывают и удаляют.
@@ -21,9 +28,31 @@
 # ~/.uno/apps/notetaker.json — значок на рабочем столе Uno Work.
 name: uno-notetaker
 services:
+  # Один раз от root: папки под bind-монты с владельцем unowork. Иначе docker
+  # создаст недостающую папку от root, и демон Uno Work (он работает от
+  # unowork) не сможет записать туда ключ приложения. Существующие папки не
+  # трогаем (идемпотентно); родителей создаём тоже от unowork — иначе
+  # ~/.uno/app-keys стал бы root-овым и ключи других приложений не легли бы.
+  uno-dirs:
+    image: busybox:1.37
+    user: "0:0"
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        for d in /home/unowork/.uno /home/unowork/.uno/apps /home/unowork/.uno/app-keys; do
+          [ -d "$$d" ] || install -d -o 1002 -g 1002 -m 755 "$$d"
+        done
+        d=/home/unowork/.uno/app-keys/notetaker
+        [ -d "$$d" ] || install -d -o 1002 -g 1002 -m 700 "$$d"
+    volumes:
+      - /home/unowork:/home/unowork
   notetaker:
     image: ghcr.io/technoob228/uno-notetaker:0.1.0
     restart: unless-stopped
+    depends_on:
+      uno-dirs: {condition: service_completed_successfully}
     environment:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
       UNO_APP_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
@@ -31,9 +60,11 @@ services:
       UNO_LLM_BASE_URL: ${UNO_LLM_BASE_URL:-https://api.getuno.xyz/v1}
       PUID: "1002"
       PGID: "1002"
+    extra_hosts: ["host.docker.internal:host-gateway"]
     volumes:
       - /home/unowork/Meetings:/meetings
-      - /home/unowork/.uno:/uno-dot
+      - /home/unowork/.uno/apps:/uno-dot/apps
+      - /home/unowork/.uno/app-keys/notetaker:/run/uno-app:ro
       - state:/state
     ports: ["8430:8430"]
     mem_limit: 1500m
