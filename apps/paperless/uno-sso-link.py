@@ -6,6 +6,7 @@ import sys
 import time
 
 sub = os.environ.get("UNO_OIDC_OWNER_SUB", "")
+MEMBERS_GROUP = "Uno members"
 if not os.environ.get("UNO_OIDC_CLIENT_ID") or not sub:
     print("uno-sso: Sign in with Uno is not configured for this install")
     sys.exit(0)
@@ -28,6 +29,19 @@ for attempt in range(300):
             print(f"uno-sso: {sub} is linked to another user ({acc.user_id}), leaving it")
         else:
             print("uno-sso: owner linked to admin" if created else "uno-sso: owner already linked")
+
+        # Приглашённые через Uno («Share app») приходят без прав — Paperless
+        # показал бы им «Error loading settings» и пустой архив. Группа с
+        # правами на документы; новых в неё кладёт PAPERLESS_SOCIAL_ACCOUNT_DEFAULT_GROUPS,
+        # уже заведённых — здесь. Управление пользователями (auth) не даём.
+        from django.contrib.auth.models import Group, Permission
+
+        group, _ = Group.objects.get_or_create(name=MEMBERS_GROUP)
+        perms = Permission.objects.filter(content_type__app_label__in=["documents", "paperless_mail"])
+        group.permissions.set(perms)
+        for other in SocialAccount.objects.filter(provider="uno").exclude(user_id=admin.id):
+            other.user.groups.add(group)
+        print(f"uno-sso: {MEMBERS_GROUP} group ready ({perms.count()} permissions)")
         sys.exit(0)
     except SystemExit:
         raise

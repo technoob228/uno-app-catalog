@@ -33,6 +33,8 @@ services:
         "settings": {"server_url": "${UNO_OIDC_ISSUER:-}", "token_auth_method": "client_secret_basic"}}]}}
       PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
       PAPERLESS_SOCIAL_AUTO_SIGNUP: "true"
+      # Права приглашённым через Uno: группу заводит sso-link (uno-sso-link.py).
+      PAPERLESS_SOCIAL_ACCOUNT_DEFAULT_GROUPS: Uno members
       PAPERLESS_REDIRECT_LOGIN_TO_SSO: "true"
       UNO_OIDC_CLIENT_ID: ${UNO_OIDC_CLIENT_ID:-}
       UNO_OIDC_OWNER_SUB: ${UNO_OIDC_OWNER_SUB:-}
