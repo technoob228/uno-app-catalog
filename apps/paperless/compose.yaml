@@ -1,7 +1,8 @@
 # Paperless-ngx — архив документов: сканы, чеки, договоры; распознаёт текст
 # (OCR), ищет по содержимому, раскладывает по тегам. SQLite + Redis.
 # Админ создаётся из переменных entrypoint'ом ДО старта веб-сервера (первый
-# открывший адрес админом не станет), регистрация закрыта.
+# открывший адрес админом не станет), регистрация закрыта. Вход через
+# аккаунт Uno — allauth OIDC; владельца к admin привязывает sso-link.
 name: uno-paperless
 services:
   broker:
@@ -13,7 +14,7 @@ services:
     restart: unless-stopped
     depends_on: [broker]
     ports: ["8098:8000"]
-    environment:
+    environment: &pl-env
       PAPERLESS_REDIS: redis://broker:6379
       PAPERLESS_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
       PAPERLESS_SECRET_KEY: ${APP_SECRET:?APP_SECRET is not set}
@@ -21,7 +22,20 @@ services:
       PAPERLESS_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set}
       PAPERLESS_ADMIN_MAIL: ${UNO_OWNER_EMAIL:-}
       PAPERLESS_ACCOUNT_ALLOW_SIGNUPS: "false"
-      PAPERLESS_SOCIAL_ACCOUNT_ALLOW_SIGNUPS: "false"
+      # Вход через аккаунт Uno (allauth OIDC). Аккаунты через Uno заводятся
+      # только тем, кого пускает Uno (владелец + «Share app»); регистрация
+      # паролем закрыта. Страница входа сразу уходит в Uno; вход паролем —
+      # <адрес>/accounts/login/?loggedout=1.
+      PAPERLESS_APPS: allauth.socialaccount.providers.openid_connect
+      PAPERLESS_SOCIALACCOUNT_PROVIDERS: >-
+        {"openid_connect": {"OAUTH_PKCE_ENABLED": true, "APPS": [{"provider_id": "uno", "name": "Sign in with Uno",
+        "client_id": "${UNO_OIDC_CLIENT_ID:-}", "secret": "${UNO_OIDC_CLIENT_SECRET:-}",
+        "settings": {"server_url": "${UNO_OIDC_ISSUER:-}", "token_auth_method": "client_secret_basic"}}]}}
+      PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
+      PAPERLESS_SOCIAL_AUTO_SIGNUP: "true"
+      PAPERLESS_REDIRECT_LOGIN_TO_SSO: "true"
+      UNO_OIDC_CLIENT_ID: ${UNO_OIDC_CLIENT_ID:-}
+      UNO_OIDC_OWNER_SUB: ${UNO_OIDC_OWNER_SUB:-}
       PAPERLESS_USE_X_FORWARD_HOST: "true"
       PAPERLESS_USE_X_FORWARD_PORT: "true"
       PAPERLESS_PROXY_SSL_HEADER: '["HTTP_X_FORWARDED_PROTO", "https"]'
@@ -33,6 +47,22 @@ services:
     volumes:
       - data:/usr/src/paperless/data
       - media:/usr/src/paperless/media
+  # Привязывает вход через Uno владельца к админу «admin» (allauth сам по
+  # email не связывает): SocialAccount(provider=uno, uid=sub владельца).
+  # Идемпотентно; без UNO_OIDC_CLIENT_ID — ничего не делает.
+  sso-link:
+    image: ghcr.io/paperless-ngx/paperless-ngx:3.2.1
+    restart: "no"
+    depends_on: [paperless]
+    user: "1000:1000"
+    working_dir: /usr/src/paperless/src
+    entrypoint: ["python3", "/uno-sso-link.py"]
+    environment:
+      <<: *pl-env
+    volumes:
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+      - ./uno-sso-link.py:/uno-sso-link.py:ro
 volumes:
   redis: {}
   data: {}

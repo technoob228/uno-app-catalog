@@ -2,7 +2,8 @@
 # оплата из баланса LLM аккаунта). Отдельный ключ шлюза для этого приложения
 # выдаёт установка (UNO_LLM_API_KEY), отзывается вместе с компьютером.
 # Админ создаётся из переменных при старте (пока пользователей нет), публичная
-# регистрация выключена — остальных админ добавляет в панели.
+# регистрация выключена. Вход через аккаунт Uno: владелец и те, с кем он
+# поделился приложением в Uno Work («Share app»).
 name: uno-open-webui
 services:
   open-webui:
@@ -26,6 +27,19 @@ services:
       RAG_OPENAI_API_KEY: ${UNO_LLM_API_KEY}
       AUDIO_STT_ENGINE: openai
       ENABLE_VERSION_UPDATE_CHECK: "false"
+      # Вход через аккаунт Uno (OIDC). Пускает только тех, кого пускает Uno
+      # (владелец + «Share app»); владелец попадает в админа по email.
+      # Пароль админа из карточки остаётся (форма входа не выключена).
+      OAUTH_CLIENT_ID: ${UNO_OIDC_CLIENT_ID:-}
+      OAUTH_CLIENT_SECRET: ${UNO_OIDC_CLIENT_SECRET:-}
+      OPENID_PROVIDER_URL: ${UNO_OIDC_DISCOVERY_URL:-}
+      OPENID_REDIRECT_URI: ${UNO_APP_URL}/oauth/oidc/callback
+      OAUTH_PROVIDER_NAME: Uno
+      OAUTH_SCOPES: openid email profile
+      OAUTH_CODE_CHALLENGE_METHOD: S256
+      ENABLE_OAUTH_SIGNUP: "true"
+      OAUTH_MERGE_ACCOUNTS_BY_EMAIL: "true"
+      DEFAULT_USER_ROLE: user
       ANONYMIZED_TELEMETRY: "false"
     volumes: [data:/app/backend/data]
 volumes:

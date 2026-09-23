@@ -2,6 +2,8 @@
 # админ создаётся из переменных. БД — SQLite (1–5 человек), фоновые задачи —
 # отдельный контейнер cron. Файлы: volume машины или внешнее S3
 # (STORAGE=s3 → OBJECTSTORE_S3_*; применяется ТОЛЬКО при первой установке).
+# Вход через аккаунт Uno — user_oidc, настраивает hooks/uno-sso.sh на каждом
+# старте; пароль admin из карточки остаётся (<адрес>/login?direct=1).
 name: uno-nextcloud
 x-nc-env: &nc-env
   SQLITE_DATABASE: nextcloud
@@ -25,6 +27,10 @@ x-nc-env: &nc-env
   OBJECTSTORE_S3_USEPATH_STYLE: "true"
   OBJECTSTORE_S3_AUTOCREATE: "true"
   OBJECTSTORE_S3_OBJECT_PREFIX: "urn:oid:"
+  # Вход через аккаунт Uno (hooks/uno-sso.sh). Пусто — только пароль.
+  UNO_OIDC_CLIENT_ID: ${UNO_OIDC_CLIENT_ID:-}
+  UNO_OIDC_CLIENT_SECRET: ${UNO_OIDC_CLIENT_SECRET:-}
+  UNO_OIDC_DISCOVERY_URL: ${UNO_OIDC_DISCOVERY_URL:-}
 services:
   app:
     image: nextcloud:35.0.0-apache
@@ -32,7 +38,9 @@ services:
     ports: ["8090:80"]
     environment:
       <<: *nc-env
-    volumes: [nc:/var/www/html]
+    volumes:
+      - nc:/var/www/html
+      - ./hooks/uno-sso.sh:/docker-entrypoint-hooks.d/before-starting/uno-sso.sh:ro
   cron:
     image: nextcloud:35.0.0-apache
     restart: unless-stopped

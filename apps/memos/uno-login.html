@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Signing in with Uno…</title>
+<style>body{font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;color:#444}</style>
+</head><body><p>Signing in with Uno…</p>
+<script>
+// «Open» из Uno Work: начать вход через Uno ровно так, как кнопка «Uno» на
+// странице входа Memos 0.31 (web/src/utils/oauth.ts: state + PKCE в
+// sessionStorage «oauth_state», redirect_uri = <адрес>/auth/callback).
+// Не вышло — на обычную страницу входа.
+(async () => {
+  try {
+    const r = await (await fetch('/api/v1/identity-providers', {credentials: 'omit'})).json();
+    const idp = (r.identityProviders || []).find((p) => p.title === 'Uno' && p.type === 'OAUTH2');
+    const c = idp && idp.config && idp.config.oauth2Config;
+    if (!c || !c.authUrl) throw new Error('no provider');
+    const b64u = (a) => btoa(String.fromCharCode(...a)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const rnd = new Uint8Array(32); crypto.getRandomValues(rnd);
+    const state = Array.from(rnd, (x) => x.toString(16).padStart(2, '0')).join('');
+    const v = new Uint8Array(32); crypto.getRandomValues(v);
+    const verifier = b64u(v);
+    const challenge = b64u(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+    sessionStorage.setItem('oauth_state', JSON.stringify({state, identityProviderName: idp.name, flowMode: 'signin',
+      timestamp: Date.now(), codeVerifier: verifier}));
+    const q = new URLSearchParams({client_id: c.clientId, redirect_uri: location.origin + '/auth/callback',
+      state, response_type: 'code', scope: (c.scopes || ['openid', 'email', 'profile']).join(' '),
+      code_challenge: challenge, code_challenge_method: 'S256'});
+    location.replace(c.authUrl + (c.authUrl.includes('?') ? '&' : '?') + q.toString());
+  } catch (e) {
+    location.replace('/auth');
+  }
+})();
+</script></body></html>

@@ -1,0 +1,19 @@
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:5230 {
+	# «Open» из Uno Work: сразу во вход через аккаунт Uno (uno-login.html).
+	handle /uno-login {
+		root * /srv
+		rewrite * /uno-login.html
+		file_server
+	}
+	handle {
+		reverse_proxy memos:5230
+	}
+}

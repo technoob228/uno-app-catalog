@@ -24,6 +24,13 @@
 		respond `{"code":403,"message":"Sign-ups are by invitation only. Ask the owner for the invite link."}` 403
 	}
 
+	# «Open» из Uno Work: сразу во вход через аккаунт Uno.
+	handle /uno-login {
+		root * /srv
+		rewrite * /uno-login.html
+		file_server
+	}
+
 	handle {
 		reverse_proxy vikunja:3456
 	}

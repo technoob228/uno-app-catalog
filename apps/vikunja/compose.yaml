@@ -4,6 +4,8 @@
 # регистрируются только по пригласительной ссылке <адрес>/uno-invite/<INVITE_KEY>
 # (Caddy ставит cookie, без неё /api/v1/register отвечает 403). Порт
 # открывается только после создания владельца — см. lib/README-gate.md.
+# Вход через аккаунт Uno — OIDC Vikunja; /uno-login (Caddy) сразу уводит во
+# вход через Uno («Open» из Uno Work).
 name: uno-vikunja
 services:
   perms:
@@ -20,6 +22,16 @@ services:
       VIKUNJA_SERVICE_SECRET: ${APP_SECRET:?APP_SECRET is not set}
       # Регистрацию закрывают ворота front (по пригласительной ссылке).
       VIKUNJA_SERVICE_ENABLEREGISTRATION: "true"
+      # Вход через аккаунт Uno (OIDC). Владелец связывается со своим аккаунтом
+      # owner по email (EMAILFALLBACK, Uno отдаёт email_verified), остальные —
+      # только те, с кем он поделился приложением. Пароль владельца остаётся.
+      VIKUNJA_AUTH_OPENID_ENABLED: "true"
+      VIKUNJA_AUTH_OPENID_PROVIDERS_UNO_NAME: Uno
+      VIKUNJA_AUTH_OPENID_PROVIDERS_UNO_AUTHURL: ${UNO_OIDC_ISSUER:-}
+      VIKUNJA_AUTH_OPENID_PROVIDERS_UNO_CLIENTID: ${UNO_OIDC_CLIENT_ID:-}
+      VIKUNJA_AUTH_OPENID_PROVIDERS_UNO_CLIENTSECRET: ${UNO_OIDC_CLIENT_SECRET:-}
+      VIKUNJA_AUTH_OPENID_PROVIDERS_UNO_SCOPE: openid email profile
+      VIKUNJA_AUTH_OPENID_PROVIDERS_UNO_EMAILFALLBACK: "true"
       VIKUNJA_DATABASE_TYPE: sqlite
       VIKUNJA_DATABASE_PATH: /db/vikunja.db
     volumes: [db:/db, files:/app/vikunja/files]
@@ -41,7 +53,7 @@ services:
     environment:
       INVITE_KEY: ${INVITE_KEY:?INVITE_KEY is not set}
     ports: ["3456:80"]
-    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "./uno-login.html:/srv/uno-login.html:ro"]
 volumes:
   db: {}
   files: {}
