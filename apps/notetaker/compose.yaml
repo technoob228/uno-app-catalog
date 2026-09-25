@@ -7,6 +7,11 @@
 # ADMIN_PASSWORD (его генерирует Uno и показывает в карточке) и без него не
 # стартует, поэтому порт публикуется напрямую — «первого открывшего» нет.
 #
+# 0.3.0: манифест ещё просит "ai.tasks" (пункт «Ask Uno to do it» → задача в
+# Uno Work, режим ask), "notify" (Inbox: «Notes ready · 3 action items») и
+# "widget" (Home: «Last meeting»). Telegram — собственный бот человека,
+# long polling, наружу ничего не открывается. Новых монтов и env нет.
+#
 # ИИ — «ИИ этого компьютера» (Uno App API демона Uno Work, docs/app-sdk.md в
 # uno-work): манифест ~/.uno/apps/notetaker.json просит "ai": {"chat": true,
 # "tasks": false, "limitUsd": 10}, демон выдаёт приложению СВОЙ токен в
@@ -49,7 +54,7 @@ services:
     volumes:
       - /home/unowork:/home/unowork
   notetaker:
-    image: ghcr.io/technoob228/uno-notetaker:0.2.0
+    image: ghcr.io/technoob228/uno-notetaker:0.3.0
     restart: unless-stopped
     depends_on:
       uno-dirs: {condition: service_completed_successfully}
