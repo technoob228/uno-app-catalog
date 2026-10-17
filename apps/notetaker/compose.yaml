@@ -12,6 +12,15 @@
 # "widget" (Home: «Last meeting»). Telegram — собственный бот человека,
 # long polling, наружу ничего не открывается. Новых монтов и env нет.
 #
+# 0.4.0: сервис bot сам заходит в звонки (Meet, Zoom, Teams, Телемост, Zoho)
+# гостем «Uno Notetaker» — по календарям человека (iCal-ссылки) или по ссылке.
+# Chromium на виртуальном экране + PulseAudio; звук звонка уходит в приложение,
+# заметки делает приложение. Бот без ключей и без монтов домашней папки: только
+# общий том bot-key (приложение пишет туда токен, открывающий лишь
+# /api/bot/worker/*), наружу портов нет. В простое — маленький процесс Python,
+# каждый звонок — Chromium на 0.5–1 ГБ (MAX_CALLS=2, потолок памяти 2500m).
+# Новых env нет. Исходники бота: technoob228/uno-notetaker, bot/, docs/bot.md.
+#
 # ИИ — «ИИ этого компьютера» (Uno App API демона Uno Work, docs/app-sdk.md в
 # uno-work): манифест ~/.uno/apps/notetaker.json просит "ai": {"chat": true,
 # "tasks": false, "limitUsd": 10}, демон выдаёт приложению СВОЙ токен в
@@ -54,7 +63,7 @@ services:
     volumes:
       - /home/unowork:/home/unowork
   notetaker:
-    image: ghcr.io/technoob228/uno-notetaker:0.3.0
+    image: ghcr.io/technoob228/uno-notetaker:0.4.0
     restart: unless-stopped
     depends_on:
       uno-dirs: {condition: service_completed_successfully}
@@ -71,7 +80,27 @@ services:
       - /home/unowork/.uno/apps:/uno-dot/apps
       - /home/unowork/.uno/app-keys/notetaker:/run/uno-app:ro
       - state:/state
+      # Токен для бота: приложение пишет /bot-key/token, бот только читает.
+      - bot-key:/bot-key
     ports: ["8430:8430"]
     mem_limit: 1500m
+  # Бот звонков. Ходит только в приложение (http://notetaker:8430) и на сайты
+  # звонков. Работает от своего пользователя (uid 1000), root ему не нужен:
+  # cap_drop ALL + no-new-privileges. shm_size и seccomp не нужны: Chromium
+  # запускается с --disable-dev-shm-usage (не упирается в 64 МБ /dev/shm) и без
+  # своей песочницы (по умолчанию Playwright), так что user namespaces не нужны.
+  bot:
+    image: ghcr.io/technoob228/uno-notetaker-bot:0.4.0
+    restart: unless-stopped
+    depends_on: [notetaker]
+    environment:
+      NOTETAKER_URL: http://notetaker:8430
+      MAX_CALLS: "2"
+    volumes:
+      - bot-key:/bot-key:ro
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 2500m
 volumes:
   state: {}
+  bot-key: {}
