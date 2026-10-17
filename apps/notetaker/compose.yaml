@@ -3,9 +3,15 @@
 # итоги, решения, задачи; «спросить о встрече»; ссылка на заметки.
 # Исходники: technoob228/uno-notetaker (MIT).
 #
-# Ворота (lib/README-gate.md): приложение само не пускает никого без пароля
-# ADMIN_PASSWORD (его генерирует Uno и показывает в карточке) и без него не
-# стартует, поэтому порт публикуется напрямую — «первого открывшего» нет.
+# Ворота (lib/README-gate.md): приложение само не пускает никого без входа и
+# без ADMIN_PASSWORD не стартует, поэтому порт публикуется напрямую —
+# «первого открывшего» нет. С 0.4.2 вход — аккаунтом Uno (OIDC, UNO_OIDC_*
+# от установки, sso.mode: oidc в каталоге fishcode): страница входа сразу
+# уходит в консоль Uno, та пускает только владельца компьютера и тех, с кем он
+# поделился приложением («Share app»), колбэк /auth/uno/callback. Пароль
+# ADMIN_PASSWORD (генерирует Uno, в карточке «Пароль владельца (запасной
+# вход)») остаётся запасным входом: /login?password=1. Без UNO_OIDC_*
+# (установки до SSO) — вход только паролем, как раньше.
 #
 # 0.3.0: манифест ещё просит "ai.tasks" (пункт «Ask Uno to do it» → задача в
 # Uno Work, режим ask), "notify" (Inbox: «Notes ready · 3 action items») и
@@ -22,6 +28,9 @@
 # Новых env нет. Исходники бота: technoob228/uno-notetaker, bot/, docs/bot.md.
 # 0.4.1: главная честно описывает бота, иконка Record, после обновления
 # браузер не держит старый app.js из кэша. Монты и env те же.
+#
+# 0.4.2: вход через Uno (см. «Ворота»): новые env UNO_OIDC_* у notetaker, у бота
+# ничего не меняется (он ходит в приложение своим токеном, не сессией).
 #
 # ИИ — «ИИ этого компьютера» (Uno App API демона Uno Work, docs/app-sdk.md в
 # uno-work): манифест ~/.uno/apps/notetaker.json просит "ai": {"chat": true,
@@ -65,7 +74,7 @@ services:
     volumes:
       - /home/unowork:/home/unowork
   notetaker:
-    image: ghcr.io/technoob228/uno-notetaker:0.4.1
+    image: ghcr.io/technoob228/uno-notetaker:0.4.2
     restart: unless-stopped
     depends_on:
       uno-dirs: {condition: service_completed_successfully}
@@ -74,6 +83,14 @@ services:
       UNO_APP_URL: ${UNO_APP_URL:?this computer has an old Uno agent - update the computer image to install apps}
       UNO_LLM_API_KEY: ${UNO_LLM_API_KEY:-}
       UNO_LLM_BASE_URL: ${UNO_LLM_BASE_URL:-https://api.getuno.xyz/v1}
+      # Вход через аккаунт Uno (пусто — только пароль).
+      UNO_OIDC_ISSUER: ${UNO_OIDC_ISSUER:-}
+      UNO_OIDC_DISCOVERY_URL: ${UNO_OIDC_DISCOVERY_URL:-}
+      UNO_OIDC_AUTH_URL: ${UNO_OIDC_AUTH_URL:-}
+      UNO_OIDC_TOKEN_URL: ${UNO_OIDC_TOKEN_URL:-}
+      UNO_OIDC_CLIENT_ID: ${UNO_OIDC_CLIENT_ID:-}
+      UNO_OIDC_CLIENT_SECRET: ${UNO_OIDC_CLIENT_SECRET:-}
+      UNO_OIDC_OWNER_SUB: ${UNO_OIDC_OWNER_SUB:-}
       PUID: "1002"
       PGID: "1002"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -92,7 +109,7 @@ services:
   # запускается с --disable-dev-shm-usage (не упирается в 64 МБ /dev/shm) и без
   # своей песочницы (по умолчанию Playwright), так что user namespaces не нужны.
   bot:
-    image: ghcr.io/technoob228/uno-notetaker-bot:0.4.1
+    image: ghcr.io/technoob228/uno-notetaker-bot:0.4.2
     restart: unless-stopped
     depends_on: [notetaker]
     environment:
