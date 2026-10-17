@@ -20,6 +20,8 @@
 # /api/bot/worker/*), наружу портов нет. В простое — маленький процесс Python,
 # каждый звонок — Chromium на 0.5–1 ГБ (MAX_CALLS=2, потолок памяти 2500m).
 # Новых env нет. Исходники бота: technoob228/uno-notetaker, bot/, docs/bot.md.
+# 0.4.1: главная честно описывает бота, иконка Record, после обновления
+# браузер не держит старый app.js из кэша. Монты и env те же.
 #
 # ИИ — «ИИ этого компьютера» (Uno App API демона Uno Work, docs/app-sdk.md в
 # uno-work): манифест ~/.uno/apps/notetaker.json просит "ai": {"chat": true,
@@ -63,7 +65,7 @@ services:
     volumes:
       - /home/unowork:/home/unowork
   notetaker:
-    image: ghcr.io/technoob228/uno-notetaker:0.4.0
+    image: ghcr.io/technoob228/uno-notetaker:0.4.1
     restart: unless-stopped
     depends_on:
       uno-dirs: {condition: service_completed_successfully}
@@ -90,7 +92,7 @@ services:
   # запускается с --disable-dev-shm-usage (не упирается в 64 МБ /dev/shm) и без
   # своей песочницы (по умолчанию Playwright), так что user namespaces не нужны.
   bot:
-    image: ghcr.io/technoob228/uno-notetaker-bot:0.4.0
+    image: ghcr.io/technoob228/uno-notetaker-bot:0.4.1
     restart: unless-stopped
     depends_on: [notetaker]
     environment:
