@@ -40,6 +40,9 @@
 # библиотеке: Work кладёт готовую папку в ~/Meetings (source "screen", что было на
 # экране по секундам), приложение само пишет заметки и задачи, видео — по ссылке
 # Uno Drive. Монты и env те же (docs/screen-recordings.md в uno-notetaker).
+# 0.7.0–0.8.0 (30.10): календари из аккаунта Uno (Google Calendar; Outlook — когда
+# консоль отдаст коннектор) без ассистента — App API GET /v1/calendars (Work 0.0.166+,
+# на старом Work как раньше); новый интерфейс в духе Granola. Монты и env те же.
 #
 # ИИ — «ИИ этого компьютера» (Uno App API демона Uno Work, docs/app-sdk.md в
 # uno-work): манифест ~/.uno/apps/notetaker.json просит "ai": {"chat": true,
@@ -83,7 +86,7 @@ services:
     volumes:
       - /home/unowork:/home/unowork
   notetaker:
-    image: ghcr.io/technoob228/uno-notetaker:0.6.0
+    image: ghcr.io/technoob228/uno-notetaker:0.8.0
     restart: unless-stopped
     depends_on:
       uno-dirs: {condition: service_completed_successfully}
@@ -118,7 +121,7 @@ services:
   # запускается с --disable-dev-shm-usage (не упирается в 64 МБ /dev/shm) и без
   # своей песочницы (по умолчанию Playwright), так что user namespaces не нужны.
   bot:
-    image: ghcr.io/technoob228/uno-notetaker-bot:0.6.0
+    image: ghcr.io/technoob228/uno-notetaker-bot:0.8.0
     restart: unless-stopped
     depends_on: [notetaker]
     environment:
